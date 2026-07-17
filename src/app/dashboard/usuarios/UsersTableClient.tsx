@@ -43,6 +43,9 @@ interface UserRecord {
   firstName: string;
   lastName: string;
   phone: string | null;
+  curp: string | null;
+  sueldoBase: number;
+  fechaIngreso: string;
   isActive: boolean;
   roleId: number;
   branchId: number | null;
@@ -432,8 +435,12 @@ export default function UsersTableClient({ users, branches, isSuperAdmin }: User
               <tr>
                 <th className="px-6 py-4 font-medium">Nombre</th>
                 <th className="px-6 py-4 font-medium">Correo</th>
+                <th className="px-6 py-4 font-medium">Celular</th>
+                <th className="px-6 py-4 font-medium">CURP</th>
                 <th className="px-6 py-4 font-medium">Sucursal</th>
                 <th className="px-6 py-4 font-medium">Rol / Puesto</th>
+                <th className="px-6 py-4 font-medium">Sueldo Base</th>
+                <th className="px-6 py-4 font-medium">Fecha de Ingreso</th>
                 <th className="px-6 py-4 font-medium">Estatus</th>
                 <th className="px-6 py-4 font-medium text-right">Acciones</th>
               </tr>
@@ -471,6 +478,16 @@ export default function UsersTableClient({ users, branches, isSuperAdmin }: User
                     {/* Email */}
                     <td className="px-6 py-4 text-slate-400">{user.email}</td>
 
+                    {/* Teléfono */}
+                    <td className="px-6 py-4 font-medium text-slate-300">
+                      {user.phone || <span className="text-slate-600 text-xs italic">N/A</span>}
+                    </td>
+
+                    {/* CURP */}
+                    <td className="px-6 py-4 text-slate-400 text-xs uppercase font-mono">
+                      {user.curp || <span className="text-slate-600 italic">N/A</span>}
+                    </td>
+
                     {/* Sucursal */}
                     <td className="px-6 py-4">
                       {user.branch ? (
@@ -491,6 +508,20 @@ export default function UsersTableClient({ users, branches, isSuperAdmin }: User
                       >
                         {user.role.name}
                       </span>
+                    </td>
+
+                    {/* Sueldo Base */}
+                    <td className="px-6 py-4 font-bold text-emerald-400">
+                      {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(user.sueldoBase)}
+                    </td>
+
+                    {/* Fecha Ingreso */}
+                    <td className="px-6 py-4 text-slate-400">
+                      {new Date(user.fechaIngreso).toLocaleDateString("es-MX", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric"
+                      })}
                     </td>
 
                     {/* Estatus */}
