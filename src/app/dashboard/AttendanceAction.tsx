@@ -10,6 +10,7 @@ interface Props {
   branchLng: number | null;
   hasActiveCheckIn: boolean; // Estado verificado en la BD al renderizar la página (persiste tras cierre de sesión)
   checkInTime: string | null; // ISO timestamp de la entrada activa (para cálculo de jornada incompleta)
+  isJourneyCompleted: boolean; // Bandera de candado estricto
 }
 
 // Fórmula de Haversine para distancias ultra precisas usando JS Nativo.
@@ -30,7 +31,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 // Duración estándar de jornada laboral en horas
 const STANDARD_SHIFT_HOURS = 8;
 
-export default function AttendanceAction({ branchLat, branchLng, hasActiveCheckIn, checkInTime }: Props) {
+export default function AttendanceAction({ branchLat, branchLng, hasActiveCheckIn, checkInTime, isJourneyCompleted }: Props) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -172,14 +173,16 @@ export default function AttendanceAction({ branchLat, branchLng, hasActiveCheckI
       {/* Corporate Button Logic */}
       <button
         onClick={handleAction}
-        disabled={loading}
+        disabled={loading || isJourneyCompleted}
         aria-busy={loading}
         className={`w-full py-8 lg:py-10 rounded-2xl font-black text-xl flex flex-col items-center justify-center gap-3 text-white shadow-xl transition-all duration-300 active:scale-95 ${
           loading
             ? "bg-slate-700 cursor-not-allowed shadow-none opacity-80"
-            : isCheckedIn
-              ? "bg-slate-700 hover:bg-slate-600 hover:shadow-slate-500/20"
-              : "bg-[#dc2626] hover:bg-red-700 hover:shadow-red-500/30"
+            : isJourneyCompleted
+              ? "bg-[#252529] text-slate-500 cursor-not-allowed shadow-none border border-[#333]"
+              : isCheckedIn
+                ? "bg-slate-700 hover:bg-slate-600 hover:shadow-slate-500/20"
+                : "bg-[#dc2626] hover:bg-red-700 hover:shadow-red-500/30"
         }`}
       >
         {loading ? (
@@ -190,6 +193,8 @@ export default function AttendanceAction({ branchLat, branchLng, hasActiveCheckI
             </span>
             <span className="text-xs font-medium text-slate-400">Por favor espera, no cierres la app</span>
           </span>
+        ) : isJourneyCompleted ? (
+          <><CheckCircle size={36} strokeWidth={2.5} /> JORNADA COMPLETADA</>
         ) : isCheckedIn ? (
           <><LogOut size={36} strokeWidth={2.5} /> MARCAR SALIDA</>
         ) : (

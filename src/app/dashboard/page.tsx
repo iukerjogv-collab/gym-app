@@ -26,10 +26,30 @@ export default async function DashboardPage() {
     }
   });
 
+  // ── CANDADO ESTRICTO: VERIFICAR SI JORNADA YA CONCLUYÓ HOY ──
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  const journeyCompletedRecord = await prisma.attendance.findFirst({
+    where: {
+      userId: userId,
+      checkIn: {
+        gte: startOfToday,
+        lt: startOfTomorrow,
+      },
+      checkOut: { not: null },
+    },
+  });
+
   const branchLat = user?.branch?.latitud ?? null;
   const branchLng = user?.branch?.longitud ?? null;
   const isCheckedIn = !!activeAttendance;
   const checkInTime = activeAttendance?.checkIn?.toISOString() ?? null;
+  const isJourneyCompleted = !!journeyCompletedRecord;
 
   // Determinar si es rol operativo (NO ve KPIs gerenciales)
   const roleLower = session?.role?.toLowerCase() ?? "";
@@ -54,6 +74,7 @@ export default async function DashboardPage() {
               branchLng={branchLng}
               hasActiveCheckIn={isCheckedIn}
               checkInTime={checkInTime}
+              isJourneyCompleted={isJourneyCompleted}
             />
           </div>
         </div>
@@ -68,6 +89,7 @@ export default async function DashboardPage() {
               branchLng={branchLng}
               hasActiveCheckIn={isCheckedIn}
               checkInTime={checkInTime}
+              isJourneyCompleted={isJourneyCompleted}
             />
           </div>
 

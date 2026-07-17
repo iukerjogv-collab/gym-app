@@ -32,6 +32,33 @@ export async function registerAttendance(latitude: number, longitude: number, di
   const userId = parseInt(session.sub, 10);
 
   try {
+    // ── CANDADO ESTRICTO: JORNADA COMPLETADA ─────────────────────────────
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+    const journeyCompleted = await prisma.attendance.findFirst({
+      where: {
+        userId: userId,
+        checkIn: {
+          gte: startOfToday,
+          lt: startOfTomorrow,
+        },
+        checkOut: { not: null },
+      },
+    });
+
+    if (journeyCompleted) {
+      return { 
+        success: false, 
+        error: "Jornada completada. No puedes registrar más entradas el día de hoy." 
+      };
+    }
+    // ───────────────────────────────────────────────────────────────────────
+
     const activeAttendance = await prisma.attendance.findFirst({
       where: {
         userId: userId,
