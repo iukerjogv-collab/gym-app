@@ -1,0 +1,424 @@
+// =============================================================================
+// Gym Management System - Prisma Schema
+// Database: MySQL | Architecture: Modular RBAC
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// =============================================================================
+// ROLE MODEL
+// Defines the 6 organizational roles within the gym system.
+// Each role is a label; actual permissions are handled via UserPermission.
+// =============================================================================
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  slug      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users User[]
+
+  @@map("roles")
+}
+
+// =============================================================================
+// MODULE MODEL
+// Represents a functional module in the system (e.g., Usuarios, Sucursales).
+// New modules can be added without schema changes — fully scalable.
+// =============================================================================
+model Module {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  icon        String?  @db.VarChar(50)
+  path        String   @db.VarChar(100)
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  permissions UserPermission[]
+
+  @@map("modules")
+}
+
+// =============================================================================
+// USER MODEL
+// Core user entity. Email is the unique identifier for login.
+// Password is stored as a bcrypt hash. Each user has exactly one role.
+// =============================================================================
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique @db.VarChar(150)
+  password  String   @db.VarChar(255)
+  firstName String   @map("first_name") @db.VarChar(100)
+  lastName  String   @map("last_name") @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  rfc       String?  @db.VarChar(13)
+  curp      String?  @db.VarChar(18)
+  nss       String?  @db.VarChar(11)
+  sueldoBase Float   @default(0) @map("sueldo_base")
+  fechaIngreso DateTime @default(now()) @map("fecha_ingreso")
+  startTime String?  @default("07:00") @map("start_time") @db.VarChar(5)
+  endTime   String?  @default("15:00") @map("end_time") @db.VarChar(5)
+  isActive  Boolean  @default(true) @map("is_active")
+  roleId    Int      @map("role_id")
+  branchId  Int?     @map("branch_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  role            Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  branch          Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  permissions     UserPermission[]
+  vacationBalance VacationBalance?
+  leaveRequests   LeaveRequest[]
+  vacationRequests VacationRequest[]
+  attendances         Attendance[]
+  pushSubscriptions   PushSubscription[]
+
+  // Justificaciones de descanso (Pre-Nómina)
+  justificationsReceived AttendanceJustification[] @relation("JustificationsReceived")
+  justificationsGranted  AttendanceJustification[] @relation("JustificationsGranted")
+
+  // Tickets de mantenimiento
+  reportedTickets  MaintenanceTicket[] @relation("TicketReportedBy")
+  resolvedTickets  MaintenanceTicket[] @relation("TicketResolvedBy")
+
+  @@index([roleId])
+  @@index([email])
+  @@index([branchId])
+  @@map("users")
+}
+
+// =============================================================================
+// USER PERMISSION MODEL (Pivot Table)
+// Many-to-many relationship between Users and Modules.
+// This is the core of the RBAC checklist: each row grants a user access
+// to a specific module. Deleting a row revokes access.
+// =============================================================================
+model UserPermission {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  moduleId  Int      @map("module_id")
+  canCreate Boolean  @default(false) @map("can_create")
+  canRead   Boolean  @default(true) @map("can_read")
+  canUpdate Boolean  @default(false) @map("can_update")
+  canDelete Boolean  @default(false) @map("can_delete")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  // A user can only have one permission entry per module
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@index([moduleId])
+  @@map("user_permissions")
+}
+
+// =============================================================================
+// BRANCH MODEL
+// Represents a physical gym location (sucursal).
+// Designed for multi-location management.
+// =============================================================================
+model Branch {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(150)
+  address         String?  @db.VarChar(255)
+  city            String?  @db.VarChar(100)
+  state           String?  @db.VarChar(100)
+  phone           String?  @db.VarChar(20)
+  email           String?  @db.VarChar(150)
+  horarioLunesViernes String?  @map("horario_lv") @db.VarChar(50)
+  horarioSabado       String?  @map("horario_sabado") @db.VarChar(50)
+  horarioDomingo      String?  @map("horario_domingo") @db.VarChar(50)
+  totalMaquinas   Int      @default(0) @map("total_maquinas")
+  latitud         Float?
+  longitud        Float?
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  specialClosures    SpecialClosure[]
+  users              User[]
+  maintenanceTickets MaintenanceTicket[]
+
+  @@map("branches")
+}
+
+// =============================================================================
+// SPECIAL CLOSURE MODEL
+// Represents specific non-working days for a branch.
+// =============================================================================
+model SpecialClosure {
+  id        Int      @id @default(autoincrement())
+  branchId  Int      @map("branch_id")
+  fecha     DateTime @db.Date // Storing just the date part ideally
+  motivo    String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([branchId])
+  @@map("special_closures")
+}
+
+// =============================================================================
+// VACATION BALANCE MODEL
+// Tracks available and used PTO (Paid Time Off).
+// =============================================================================
+model VacationBalance {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique @map("user_id")
+  totalDays     Int      @default(0) @map("total_days")
+  usedDays      Int      @default(0) @map("used_days")
+  remainingDays Int      @default(0) @map("remaining_days")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("vacation_balances")
+}
+
+// =============================================================================
+// LEAVE REQUEST MODEL
+// Tracks requests for time off (Vacation, Permissions, Sick leave).
+// =============================================================================
+model LeaveRequest {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  type      String   @db.VarChar(50) // e.g. "Vacation", "Permission", "Sick"
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  status    String   @default("Pending") @db.VarChar(20) // "Pending", "Approved", "Rejected"
+  reason    String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("leave_requests")
+}
+
+// =============================================================================
+// VACATION STATUS ENUM
+// =============================================================================
+enum VacationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// =============================================================================
+// VACATION REQUEST MODEL
+// Tracks employee requests for vacations.
+// =============================================================================
+model VacationRequest {
+  id               Int            @id @default(autoincrement())
+  employeeId       Int            @map("employee_id")
+  startDate        DateTime       @map("start_date") @db.Date
+  endDate          DateTime       @map("end_date") @db.Date
+  requestedDays    Int            @map("requested_days")
+  restDays         Int            @default(0) @map("rest_days")
+  coveringEmployee String?        @map("covering_employee") @db.VarChar(150)
+  reason           String         @db.Text
+  status           VacationStatus @default(PENDING)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  resolvedAt       DateTime?      @map("resolved_at")
+
+  employee         User           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("vacation_requests")
+}
+
+// =============================================================================
+// ATTENDANCE MODEL
+// Tracks employee check-in and check-out times with geofencing data.
+// =============================================================================
+model Attendance {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  checkIn        DateTime  @map("check_in")
+  checkOut       DateTime? @map("check_out")
+  latitude       Float?
+  longitude      Float?
+  distanceMts    Float?    @map("distance_mts") // Guardar la distancia al momento del check-in (auditoria)
+  isLate         Boolean   @default(false) @map("is_late")
+  lastNotifiedAt DateTime? @map("last_notified_at") // Anti-spam: solo notificar una vez por turno prolongado
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("attendances")
+}
+
+// =============================================================================
+// PUSH SUBSCRIPTION MODEL
+// Stores Web Push subscriptions per user for shift reminder notifications.
+// =============================================================================
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  endpoint  String   @db.Text
+  p256dh    String   @db.VarChar(255)
+  auth      String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+// =============================================================================
+// MAINTENANCE TICKET MODEL
+// Tracks maintenance requests reported by staff for a specific branch.
+// =============================================================================
+model MaintenanceTicket {
+  id           Int       @id @default(autoincrement())
+  title        String    @db.VarChar(255)
+  description  String    @db.Text
+  priority     String    @default("MEDIUM") @db.VarChar(10) // LOW, MEDIUM, HIGH
+  status       String    @default("OPEN") @db.VarChar(15)   // OPEN, IN_PROGRESS, CLOSED
+  adminComment String?   @map("admin_comment") @db.Text
+  branchId     Int       @map("branch_id")
+  reportedById Int       @map("reported_by_id")
+  resolvedById Int?      @map("resolved_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  branch     Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  reportedBy User   @relation("TicketReportedBy", fields: [reportedById], references: [id], onDelete: Restrict)
+  resolvedBy User?  @relation("TicketResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([branchId])
+  @@index([reportedById])
+  @@index([resolvedById])
+  @@index([status])
+  @@map("maintenance_tickets")
+}
+
+// =============================================================================
+// ATTENDANCE JUSTIFICATION MODEL
+// Tracks admin-justified rest days for payroll adjustments.
+// A justified day counts as "attended" for payroll calculation.
+// =============================================================================
+model AttendanceJustification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  date      DateTime @db.Date
+  reason    String?  @db.VarChar(255)
+  adminId   Int      @map("admin_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User @relation("JustificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  admin User @relation("JustificationsGranted", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("attendance_justifications")
+}
+
+// =============================================================================
+// WORK CYCLE MODEL (LEGACY — NO LONGER USED)
+// Kept to preserve existing DB table. Not connected to User model.
+// =============================================================================
+model WorkCycle {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique @map("user_id")
+  cycleType      String   @map("cycle_type") @db.VarChar(20)
+  cycleStartDate DateTime @map("cycle_start_date") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("work_cycles")
+}
+
+// =============================================================================
+// SCHEDULE EXCEPTION MODEL (LEGACY — NO LONGER USED)
+// Kept to preserve existing DB table. Not connected to User model.
+// =============================================================================
+model ScheduleException {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  exceptionDate   DateTime @map("exception_date") @db.Date
+  isDayOff        Boolean  @default(false) @map("is_day_off")
+  customStartTime String?  @map("custom_start_time") @db.VarChar(5)
+  customEndTime   String?  @map("custom_end_time") @db.VarChar(5)
+  reason          String?  @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, exceptionDate])
+  @@index([userId])
+  @@map("schedule_exceptions")
+}
+
+// =============================================================================
+// RECRUITMENT CANDIDATE MODEL
+// Tracks candidates through a 5-step hiring funnel for branch coordinators.
+// Token-based public exam with server-side timer and anti-cheat controls.
+// States: LINK_ENVIADO → EN_PROCESO → DESCARTADO | FILTRO_APROBADO
+//         → REFERENCIAS → PANEL_DIRECTIVO → CONTRATADO
+// =============================================================================
+model RecruitmentCandidate {
+  id              Int       @id @default(autoincrement())
+  token           String    @unique @db.VarChar(36)
+  fullName        String    @map("full_name") @db.VarChar(200)
+  email           String    @db.VarChar(150)
+  targetBranchId  Int       @map("target_branch_id")
+  position        String    @default("COORDINADOR") @db.VarChar(30)
+
+  // Funnel state machine
+  status          String    @default("LINK_ENVIADO") @db.VarChar(30)
+
+  // Exam timing (server-side source of truth)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  expiresAt       DateTime? @map("expires_at")
+
+  // Part A — Multiple choice (10 questions, 1 pt each, pass ≥ 8)
+  partAAnswers    String?   @map("part_a_answers") @db.Text
+  partAScore      Int       @default(0) @map("part_a_score")
+
+  // Part B — Open cases (10 cases, 1 pt each via keyword match, pass ≥ 8)
+  partBAnswers    String?   @map("part_b_answers") @db.Text
+  partBScore      Int       @default(0) @map("part_b_score")
+
+  // Steps 3-5: Internal follow-up
+  referencesNotes String?   @map("references_notes") @db.Text
+  panelScore      Int?      @map("panel_score")
+  panelNotes      String?   @map("panel_notes") @db.Text
+  hiredAt         DateTime? @map("hired_at")
+
+  // Discard reason for audit trail
+  discardReason   String?   @map("discard_reason") @db.VarChar(100)
+
+  // Candidate selected multiple-choice answers in order
+  selectedAnswers String?   @map("selected_answers") @db.Text
+
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([token])
+  @@index([status])
+  @@index([targetBranchId])
+  @@map("recruitment_candidates")
+}

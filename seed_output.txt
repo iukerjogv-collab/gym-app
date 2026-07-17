@@ -1,0 +1,8 @@
+﻿­ƒî▒ Seeding database...
+
+Ô£à 6 roles created
+Ô£à 2 modules created
+Ô£à Admin user created: admin@gym.com
+Ô£à Admin permissions assigned for 2 modules
+
+­ƒÄë Seed completed successfully!

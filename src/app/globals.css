@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #dc2626;
+  /* Red-600 */
+  --color-primary-hover: #b91c1c;
+  /* Red-700 */
+  --color-secondary: #1e3a5f;
+  /* Deep Blue */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@layer base {
+  :root {
+    /* CAMBIO CLAVE: El fondo ahora es el oscuro del Dashboard */
+    --background: #121215;
+    --foreground: #f8fafc;
+    /* Texto slate-50 para que resalte */
+    --border: #252529;
+    /* Bordes oscuros como el sidebar */
+    --input: #1a1a1e;
+    --ring: #dc2626;
+    /* Rojo para el foco, combinando con Training Zone */
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Aseguramos que el texto por defecto sea legible en fondo oscuro */
+    @apply antialiased;
+  }
+}
+
+@layer utilities {
+  @keyframes energy-pulse {
+
+    0%,
+    100% {
+      color: #1e3a5f;
+    }
+
+    50% {
+      color: #dc2626;
+    }
+  }
+
+  .animate-energy-pulse {
+    animation: energy-pulse 3s infinite ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
+
+  .animate-scaleIn {
+    animation: scaleIn 0.25s ease-out forwards;
+  }
+}
